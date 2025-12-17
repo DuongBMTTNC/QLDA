@@ -1,0 +1,456 @@
+﻿@model QLDA.Controllers.ProjectDetailsViewModel
+
+@{
+    ViewData["Title"] = "Chi tiết dự án";
+}
+
+<h2>@Model.Project.ProjectName</h2>
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-secondary">← Quay lại</a>
+    <a asp-action="Chat" asp-route-id="@Model.Project.ProjectId" class="btn btn-primary ms-2">💬 Vào chat dự án</a>
+    @if (Model.CurrentUserRole == "Owner" || Model.CurrentUserRole == "Manager")
+    {
+        <a asp-controller="TaskItems" asp-action="Create"
+           asp-route-projectId="@Model.Project.ProjectId"
+           class="btn btn-primary ms-2">➕ Tạo Task</a>
+    }
+</div>
+
+
+<!-- ================================================= -->
+<!--                BOOTSTRAP 5 - NAV TABS             -->
+<!-- ================================================= -->
+
+<ul class="nav nav-tabs" id="projectTabs" role="tablist">
+
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="progress-tab"
+                data-bs-toggle="tab" data-bs-target="#progress"
+                type="button" role="tab">
+            📊 Tiến trình
+        </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="members-tab"
+                data-bs-toggle="tab" data-bs-target="#members"
+                type="button" role="tab">
+            👥 Thành viên
+        </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tasks-tab"
+                data-bs-toggle="tab" data-bs-target="#tasks"
+                type="button" role="tab">
+            ✅ Công việc
+        </button>
+    </li>
+
+</ul>
+
+
+
+<div class="tab-content mt-3" id="projectTabsContent">
+
+
+    <!-- ====================================================== -->
+    <!--                     TAB 1: TIẾN TRÌNH                   -->
+    <!-- ====================================================== -->
+
+    <div class="tab-pane fade show active" id="progress" role="tabpanel">
+
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <h5>Mô tả</h5>
+                <p>
+                    @(!string.IsNullOrWhiteSpace(Model.Project.Description)
+                        ? Model.Project.Description
+                        : "<i>Chưa có mô tả</i>")
+                </p>
+
+                <p><strong>Chủ dự án:</strong> @(Model.Project.Owner?.FullName ?? Model.Project.Owner?.UserName)</p>
+                <p><strong>Ngày bắt đầu:</strong> @Model.Project.StartDate:dd/MM/yyyy</p>
+                <p><strong>Ngày kết thúc:</strong> @(Model.Project.EndDate?.ToString("dd/MM/yyyy") ?? "Chưa đặt")</p>
+
+                <h6>
+                    Tiến độ: @Model.ProgressPercent %
+                    <a asp-action="Progress" asp-route-id="@Model.Project.ProjectId" class="btn btn-link p-0 ms-2">
+                        Xem chi tiết →
+                    </a>
+                </h6>
+
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width:@Model.ProgressPercent%">
+                        @Model.ProgressPercent %
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+    <!-- ====================================================== -->
+    <!--                     TAB 2: THÀNH VIÊN                   -->
+    <!-- ====================================================== -->
+
+    <div class="tab-pane fade" id="members" role="tabpanel">
+
+        <div class="card">
+            <div class="card-body">
+
+                <h4 class="mb-3">
+                    Thành viên dự án <span class="badge bg-primary">@Model.Members.Count</span>
+                </h4>
+
+                <div class="list-group">
+                    @foreach (var m in Model.Members)
+                    {
+                        <div class="list-group-item d-flex align-items-center justify-content-between">
+
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="@m.User.AvatarUrl" width="40" height="40" class="rounded-circle" style="object-fit:cover;" />
+                                <div>
+                                    <div>@m.User.FullName</div>
+                                    <small class="text-muted">@m.User.Email</small>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+
+                                @if (Model.CurrentUserId == Model.Project.OwnerId && m.UserId != Model.Project.OwnerId)
+                                {
+                                    <form asp-action="ChangeMemberRole" method="post" class="d-flex gap-1">
+                                        <input type="hidden" name="projectId" value="@Model.Project.ProjectId" />
+                                        <input type="hidden" name="userId" value="@m.UserId" />
+
+                                        <select name="newRole" class="form-select form-select-sm">
+                                            <option value="Member" selected="@("Member"==m.Role)">Member</option>
+                                            <option value="Viewer" selected="@("Viewer"==m.Role)">Viewer</option>
+                                            <option value="Manager" selected="@("Manager"==m.Role)">Manager</option>
+                                        </select>
+
+                                        <button class="btn btn-sm btn-primary">Cập nhật</button>
+                                    </form>
+
+                                    <form asp-action="RemoveMember" method="post" onsubmit="return confirm('Bạn chắc chắn muốn xóa thành viên này?');">
+                                        <input type="hidden" name="projectId" value="@Model.Project.ProjectId" />
+                                        <input type="hidden" name="userId" value="@m.UserId" />
+                                        <button class="btn btn-sm btn-danger">Xóa</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@m.Role</span>
+                                }
+
+                            </div>
+
+                        </div>
+                    }
+                </div>
+
+
+                <!-- FORM mời -->
+                <div class="card mt-3">
+                    <div class="card-body">
+
+                        <h6>Thêm thành viên</h6>
+
+                        <form asp-action="InviteMember" method="post">
+                            <input type="hidden" name="projectId" value="@Model.Project.ProjectId" />
+
+                            <div class="mb-2">
+                                <label>Email thành viên</label>
+                                <input name="email" class="form-control" required />
+                            </div>
+
+                            <div class="mb-2">
+                                <label>Vai trò</label>
+                                <select name="role" class="form-select">
+                                    <option value="Member">Member</option>
+                                    <option value="Contributor">Contributor</option>
+                                    <option value="Reviewer">Reviewer</option>
+                                </select>
+                            </div>
+
+                            <button class="btn btn-primary">Mời vào dự án</button>
+                        </form>
+
+                        @if (TempData["InviteMessage"] != null)
+                        {
+                            <div class="alert alert-info mt-2">@TempData["InviteMessage"]</div>
+                        }
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+    <!-- ====================================================== -->
+    <!--                     TAB 3: CÔNG VIỆC                    -->
+    <!-- ====================================================== -->
+
+    <div class="tab-pane fade" id="tasks" role="tabpanel">
+
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <h5>Công việc (Tasks)</h5>
+
+                @if (Model.Tasks.Any())
+                {
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tiêu đề</th>
+                                <th>Hạn</th>
+                                <th>Trạng thái</th>
+                                <th>Người thực hiện</th>
+                                <th>Khác</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var t in Model.Tasks)
+                            {
+                                var rowId = $"task_{t.Id}";
+
+                                <tr class="align-middle">
+                                    <td>
+                                        <a asp-controller="TaskItems" asp-action="Details"
+                                           asp-route-id="@t.Id"
+                                           class="fw-bold text-decoration-none">@t.Title</a>
+
+                                        <br />
+
+                                        <!-- NÚT MỞ RỘNG -->
+                                        <a class="text-primary small toggle-btn collapsed"
+                                           data-bs-toggle="collapse"
+                                           href="#@rowId"
+                                           aria-expanded="false">
+                                            <span class="toggle-arrow">▼</span> Xem chi tiết
+                                        </a>
+                                    </td>
+
+                                    <td>@(t.DueDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+
+                                    <td>
+                                        @switch (t.Status)
+                                        {
+                                            case TaskItemStatus.Pending:
+                                                <span class="badge bg-secondary">Chưa làm</span>
+                                                break;
+                                            case TaskItemStatus.InProgress:
+                                                <span class="badge bg-info text-dark">Đang làm</span>
+                                                break;
+                                            case TaskItemStatus.Completed:
+                                                <span class="badge bg-success">Hoàn thành</span>
+                                                break;
+                                            case TaskItemStatus.Cancelled:
+                                                <span class="badge bg-danger">Huỷ</span>
+                                                break;
+                                        }
+                                    </td>
+
+                                    <td>@(t.AssignedUser?.FullName ?? t.AssignedUser?.UserName ?? "-")</td>
+
+                                    <td>
+                                        <span class="badge bg-primary">@t.Files.Count file</span><br />
+                                        <span class="badge bg-secondary">@t.Comments.Count bình luận</span>
+                                    </td>
+                                </tr>
+
+                                <!-- PANEL ẨN -->
+                                <tr class="collapse" id="@rowId">
+                                    <td colspan="5">
+                                        <div class="p-3 border rounded bg-light">
+
+                                            <!-- FILES -->
+                                            <h6 class="fw-bold">📂 File đính kèm</h6>
+
+                                            @if (t.Files.Any())
+                                            {
+                                                <ul class="mb-2">
+                                                    @foreach (var f in t.Files)
+                                                    {
+                                                        <li>
+                                                            <a href="@Url.Content(f.FilePath)" target="_blank">
+                                                                @f.FileName
+                                                            </a>
+                                                            <small class="text-muted">
+                                                                (@f.UploadedAt.ToString("dd/MM/yyyy"))
+                                                            </small>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted">Không có file.</p>
+                                            }
+
+                                            <form asp-controller="TaskItems" asp-action="UploadFile"
+                                                  enctype="multipart/form-data"
+                                                  method="post" class="mb-3">
+
+                                                <input type="hidden" name="taskId" value="@t.Id" />
+
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <input type="file" name="file" class="form-control" required />
+                                                    <button type="submit" class="btn btn-outline-primary">Upload</button>
+                                                </div>
+                                            </form>
+
+                                            <hr />
+                                            @if (Model.CurrentUserRole == "Owner" || Model.CurrentUserRole == "Manager")
+                                            {
+                                                <hr />
+
+                                                <div class="d-flex justify-content-end gap-2">
+
+                                                    <!-- Nút sửa -->
+                                                    <a asp-controller="TaskItems"
+                                                       asp-action="Edit"
+                                                       asp-route-id="@t.Id"
+                                                       class="btn btn-outline-warning btn-sm">
+                                                        ✏ Sửa
+                                                    </a>
+
+                                                    <!-- Nút mở modal xoá -->
+                                                    <button class="btn btn-outline-danger btn-sm"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#deleteTaskModal-@t.Id">
+                                                        🗑 Xóa
+                                                    </button>
+                                                </div>
+
+                                                <!-- MODAL XOÁ -->
+                                                <div class="modal fade" id="deleteTaskModal-@t.Id" tabindex="-1">
+                                                    <div class="modal-dialog modal-dialog-centered">
+                                                        <div class="modal-content border-danger">
+                                                            <div class="modal-header bg-danger text-white">
+                                                                <h5 class="modal-title">Xác nhận xoá Task</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                            </div>
+
+                                                            <div class="modal-body">
+                                                                Bạn có chắc muốn xoá công việc:
+                                                                <br />
+                                                                <b>@t.Title</b>?
+                                                                <br /><br />
+                                                                <i class="text-muted">Hành động này không thể hoàn tác.</i>
+                                                            </div>
+
+                                                            <div class="modal-footer">
+                                                                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+
+                                                                <form asp-controller="TaskItems" asp-action="DeleteConfirmed" method="post">
+                                                                    <input type="hidden" name="id" value="@t.Id" />
+                                                                    <button type="submit" class="btn btn-danger">Xóa</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            <!-- COMMENTS -->
+                                            <h6 class="fw-bold">💬 Bình luận</h6>
+
+                                            @if (t.Comments.Any())
+                                            {
+                                                <div class="mb-2" style="max-height: 200px; overflow-y: auto;">
+                                                    @foreach (var c in t.Comments)
+                                                    {
+                                                        <div class="border rounded p-2 mb-2 bg-white">
+                                                            <b>@(c.User?.FullName ?? c.User?.UserName)</b>
+                                                            <span class="text-muted small">
+                                                                @c.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                                            </span>
+                                                            <div>@c.Content</div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted"><i>Chưa có bình luận.</i></p>
+                                            }
+
+                                            <form asp-controller="TaskItems" asp-action="AddComment" method="post">
+                                                <input type="hidden" name="taskId" value="@t.Id" />
+                                                <textarea name="content" class="form-control" rows="2"
+                                                          placeholder="Viết bình luận..." required></textarea>
+                                                <button class="btn btn-primary btn-sm mt-2">Gửi</button>
+                                            </form>
+
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p><i>Chưa có công việc nào.</i></p>
+                }
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            $('#userEmail').on('input', function () {
+                var keyword = $(this).val();
+                if (keyword.length < 2) {
+                    $('#userSuggestions').hide();
+                    return;
+                }
+
+                $.getJSON('/Projects/SearchUser', { keyword: keyword }, function (data) {
+                    var html = '';
+                    data.forEach(u =>
+                        html += `<li class="list-group-item" data-id="${u.Id}">${u.Name} (${u.Email})</li>`
+                    );
+                    $('#userSuggestions').html(html).show();
+                });
+            });
+
+            $('#userSuggestions').on('click', 'li', function () {
+                $('#userEmail').val($(this).text());
+                $('#selectedUserId').val($(this).data('id'));
+                $('#userSuggestions').hide();
+            });
+
+            $(document).click(function (e) {
+                if (!$(e.target).closest('#userEmail, #userSuggestions').length) {
+                    $('#userSuggestions').hide();
+                }
+            });
+
+        });
+    </script>
+}

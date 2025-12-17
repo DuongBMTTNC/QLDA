@@ -1,0 +1,195 @@
+﻿@using Microsoft.AspNetCore.Identity
+
+
+<!-- Navbar -->
+
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container">
+
+        <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
+            <i class="bi bi-kanban"></i> ProjectManager
+        </a>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+
+                @inject UserManager<ApplicationUser> UserManager
+
+                @if (User.Identity.IsAuthenticated)
+                {
+                    var user = await UserManager.GetUserAsync(User);
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                            <img src="@user?.AvatarUrl" style="width:30px;height:30px;border-radius:50%;" />
+                            @user.FullName
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" asp-controller="Account" asp-action="Profile">👤 Thông tin cá nhân</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="Projects" asp-action="Index">📁 Dự án của tôi</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" asp-controller="TaskItems" asp-action="MyTasks">📋 Công việc của tôi</a>
+                            </li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-area="Identity" asp-page="/Account/Logout" method="post">
+                                    <button class="dropdown-item text-danger">🚪 Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
+
+                    </li>
+                }
+                else
+                {
+                    <li><a asp-controller="Account" asp-action="Register" class="btn btn-outline-light">Đăng ký</a></li>
+                    <li><a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Login</a></li>
+                }
+
+            </ul>
+        </div>
+    </div>
+</nav>
+
+
+
+<!-- Hero section -->
+<section class="py-5 bg-light">
+    <div class="container text-center">
+        <h1 class="fw-bold mb-3">Hệ thống Quản lý Dự án</h1>
+        <p class="lead text-muted mb-4">
+            Giải pháp tối ưu để quản lý nhóm, theo dõi tiến độ, giao việc và trao đổi nội bộ.
+        </p>
+
+        <a asp-controller="Projects" asp-action="Index"
+           class="btn btn-primary btn-lg rounded-pill px-4">
+            Bắt đầu quản lý dự án
+        </a>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4 h-100">
+                    <i class="bi bi-kanban fs-1 text-primary"></i>
+                    <h4 class="mt-3">Quản lý dự án</h4>
+                    <p class="text-muted">Tạo dự án, phân công công việc và theo dõi tiến độ.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4 h-100">
+                    <i class="bi bi-chat-dots fs-1 text-success"></i>
+                    <h4 class="mt-3">Trao đổi nhóm</h4>
+                    <p class="text-muted">Nhắn tin, thảo luận trực tiếp trong từng dự án.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card shadow-sm p-4 h-100">
+                    <i class="bi bi-person-check fs-1 text-warning"></i>
+                    <h4 class="mt-3">Phân quyền & bảo mật</h4>
+                    <p class="text-muted">Quản trị viên, quản lý dự án và thành viên.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================= -->
+<!-- 🧠 CHATBOT GÓC MÀN HÌNH -->
+<!-- ============================= -->
+<!-- Nút bubble -->
+<div id="chatBubble" style="
+    width:60px; height:60px; background:#0d6efd;
+    border-radius:50%; position:fixed; bottom:20px; right:20px;
+    display:flex; justify-content:center; align-items:center;
+    color:white; font-size:28px; cursor:pointer; z-index:9999;">
+    💬
+</div>
+
+<!-- Hộp Chat -->
+<div id="chatBox" style="
+    width:300px; height:380px; background:white;
+    position:fixed; bottom:90px; right:20px; border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.2); display:none;
+    z-index:9999; overflow:hidden;">
+
+    <div style="background:#0d6efd; color:white; padding:10px; font-size:16px;">
+        Trợ lý hỗ trợ
+    </div>
+
+    <div id="chatContent" style="height:260px; padding:10px; overflow-y:auto;">
+    </div>
+
+    <div style="padding:8px; border-top:1px solid #ddd;">
+        <input id="userInput" class="form-control" placeholder="Nhập câu hỏi...">
+        <button id="sendBtn" class="btn btn-primary w-100 mt-2">Gửi</button>
+    </div>
+</div>
+
+
+<!-- Script Chatbot -->
+<script>
+    const chatBubble = document.getElementById("chatBubble");
+    const chatBox = document.getElementById("chatBox");
+    const chatContent = document.getElementById("chatContent");
+    const userInput = document.getElementById("userInput");
+
+    // Câu trả lời có sẵn
+    const botAnswers = {
+        "đăng ký": "Bạn có thể đăng ký tài khoản bằng cách nhấn vào nút 'Đăng ký' ở góc trên bên phải.",
+        "login": "Bạn nhấn nút 'Login' ở góc phải để đăng nhập.",
+        "hướng dẫn": "Bạn muốn hướng dẫn phần nào ạ? Ví dụ: đăng ký, tạo dự án, thêm thành viên…",
+        "tạo dự án": "Bạn vào mục 'Dự án của tôi' rồi nhấn nút '+ Tạo dự án mới'.",
+        "thêm thành viên": "Trong trang chi tiết dự án, bạn có thể mời thêm thành viên.",
+        "liên hệ": "Bạn có thể liên hệ Admin qua email: admin@project.com."
+    };
+
+    // Mở / đóng chat
+    chatBubble.onclick = () => {
+        chatBox.style.display = (chatBox.style.display === "none") ? "block" : "none";
+    };
+
+    // Gửi tin nhắn
+    document.getElementById("sendBtn").onclick = () => sendMessage();
+    userInput.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+
+    function sendMessage() {
+        const msg = userInput.value.trim();
+        if (!msg) return;
+
+        appendMessage("Bạn", msg);
+        userInput.value = "";
+
+        let reply = "Xin lỗi, tôi chưa hiểu câu hỏi này.";
+
+        for (let keyword in botAnswers) {
+            if (msg.toLowerCase().includes(keyword)) {
+                reply = botAnswers[keyword];
+                break;
+            }
+        }
+
+        setTimeout(() => appendMessage("Bot", reply), 400);
+    }
+
+    function appendMessage(sender, text) {
+        const div = document.createElement("div");
+        div.innerHTML = `<b>${sender}:</b> ${text}`;
+        div.style.marginBottom = "8px";
+        if (sender === "Bot") div.style.color = "#0d6efd";
+
+        chatContent.appendChild(div);
+        chatContent.scrollTop = chatContent.scrollHeight;
+    }
+</script>

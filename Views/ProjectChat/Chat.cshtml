@@ -1,0 +1,52 @@
+﻿@{
+    ViewData["Title"] = "Chat với AI";
+    var projectId = ViewBag.ProjectId;
+}
+
+<h3>Chat với AI - Dự án @projectId</h3>
+
+<div id="chatContainer" style="border:1px solid #ccc; padding:10px; max-width:600px; height:400px; overflow-y:auto; background:#f9f9f9;">
+</div>
+
+<div class="mt-2" style="max-width:600px;">
+    <input type="text" id="userMessage" class="form-control" placeholder="Nhập tin nhắn..." />
+    <button id="sendBtn" class="btn btn-primary mt-1">Gửi</button>
+</div>
+
+<script>
+    const chatContainer = document.getElementById("chatContainer");
+
+    function appendMessage(sender, message) {
+        const div = document.createElement("div");
+        div.innerHTML = `<b>${sender}:</b> ${message}`;
+        div.style.marginBottom = "5px";
+        if(sender === "Bot") div.style.color = "#0d6efd";
+        chatContainer.appendChild(div);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+        const msgInput = document.getElementById("userMessage");
+        const msg = msgInput.value.trim();
+        if(!msg) return;
+
+        appendMessage("Bạn", msg);
+        msgInput.value = "";
+
+        const response = await fetch('@Url.Action("SendMessage", "ProjectChat")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ProjectId: @projectId, Message: msg })
+        });
+
+        const data = await response.json();
+        appendMessage("Bot", data.reply);
+    });
+
+    document.getElementById("userMessage").addEventListener("keypress", function(e) {
+        if(e.key === 'Enter') {
+            document.getElementById("sendBtn").click();
+            e.preventDefault();
+        }
+    });
+</script>

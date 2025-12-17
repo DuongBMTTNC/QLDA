@@ -1,0 +1,138 @@
+﻿@model QLDA.Models.Project
+
+@{
+    ViewData["Title"] = "Tạo dự án mới";
+}
+
+
+<h2>@ViewData["Title"]</h2>
+<style>
+    /* Container */
+    .md-input-group {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    /* Input & Textarea */
+    .md-input,
+    .md-textarea {
+        width: 100%;
+        padding: 14px 12px 6px 12px;
+        border: none;
+        border-bottom: 2px solid #ccc;
+        font-size: 15px;
+        background: transparent;
+        transition: all 0.25s ease;
+        outline: none;
+    }
+
+        /* Focus effect */
+        .md-input:focus,
+        .md-textarea:focus {
+            border-color: #3f51b5 !important; /* Material Indigo */
+            box-shadow: 0 1px 0 0 #3f51b5;
+        }
+
+    /* Floating Label */
+    .md-label {
+        position: absolute;
+        left: 12px;
+        top: 14px;
+        color: #777;
+        pointer-events: none;
+        transition: 0.25s ease all;
+        font-size: 15px;
+    }
+
+    /* When input has text OR is focused */
+    .md-input:focus ~ .md-label,
+    .md-input:not(:placeholder-shown) ~ .md-label,
+    .md-textarea:focus ~ .md-label,
+    .md-textarea:not(:placeholder-shown) ~ .md-label {
+        top: -8px;
+        left: 6px;
+        font-size: 12px;
+        color: #3f51b5;
+        background: #fff;
+        padding: 0 4px;
+    }
+
+    /* Textarea custom */
+    .md-textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+    .datepicker {
+        max-width: 260px; /* thu ngắn lại */
+        border-radius: 10px; /* bo góc đẹp */
+        padding-left: 36px; /* chừa chỗ cho icon */
+        background: #fdfdfd;
+        border: 1px solid #bcd0ff; /* màu viền xanh nhạt */
+        transition: 0.25s;
+    }
+
+        .datepicker:focus {
+            border-color: #2d6cdf; /* xanh đậm khi focus */
+            box-shadow: 0 0 6px #a9c7ff;
+        }
+
+    /* icon lịch */
+    .date-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+        .date-wrapper i {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #2d6cdf;
+        }
+</style>
+
+<form asp-action="Create" method="post">
+    <div class="md-input-group">
+        <input asp-for="ProjectName" class="md-input" placeholder=" " />
+        <label asp-for="ProjectName" class="md-label"></label>
+        <span asp-validation-for="ProjectName" class="text-danger"></span>
+    </div>
+
+    <div class="md-input-group">
+        <textarea asp-for="Description" class="md-textarea" placeholder=" "></textarea>
+        <label asp-for="Description" class="md-label"></label>
+    </div>
+
+    <div class="date-wrapper mt-1">Ngày bắt đầu
+        <i class="bi bi-calendar-event"></i>
+        <input asp-for="StartDate" class="form-control datepicker" />
+    </div>
+
+    <div class="date-wrapper mt-1">Ngày kết thúc
+        <i class="bi bi-calendar-event"></i>
+        <input asp-for="EndDate" class="form-control datepicker" />
+    </div>
+
+    <script>
+        flatpickr(".datepicker", {
+            dateFormat: "d/m/Y",
+            allowInput: true
+        });
+    </script>
+
+    <button type="submit" class="btn btn-primary mt-3">Tạo dự án</button>
+    <a asp-action="Index" class="btn btn-secondary mt-3">Quay lại</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+    flatpickr("#startDate", {
+        dateFormat: "d/m/Y"
+    });
+</script>

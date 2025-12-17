@@ -1,0 +1,155 @@
+﻿@model List<QLDA.Models.ChatMessage>
+
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<QLDA.Models.ApplicationUser> UserManager
+
+@{
+    ViewData["Title"] = "Chat dự án";
+    var projectId = ViewBag.ProjectId;
+    var projectName = ViewBag.ProjectName;
+}
+
+<h2>💬 Chat dự án: @projectName</h2>
+<a asp-action="Details" asp-route-id="@projectId" class="btn btn-secondary mb-2">← Quay lại chi tiết</a>
+
+<div class="card">
+    <div class="card-body" style="height:60vh; overflow:auto;" id="chatWindow">
+        @if (!Model.Any())
+        {
+            <p class="text-muted">Chưa có tin nhắn nào — hãy là người gửi tin nhắn đầu tiên!</p>
+        }
+        else
+        {
+            @foreach (var m in Model)
+            {
+                bool isMine = m.SenderId == UserManager.GetUserId(User);
+                string avatar = m.Sender?.AvatarUrl ?? "/images/default-avatar.png";
+
+                <div class="d-flex mb-2 @(isMine ? "justify-content-end" : "justify-content-start")">
+
+                    @if (!isMine)
+                    {
+                        <img src="@avatar" class="rounded-circle me-2" style="width:40px;height:40px;object-fit:cover;">
+                    }
+
+                    <div style="max-width:60%;">
+                        <div class="p-2 rounded @(isMine ? "bg-primary text-white" : "bg-light")">
+                            <small>@(m.Sender?.FullName ?? m.Sender?.UserName)</small><br />
+                            @Html.Raw(System.Net.WebUtility.HtmlEncode(m.Message).Replace("\n", "<br/>"))
+                        </div>
+                        <small class="text-muted">@m.SentAt.ToLocalTime().ToString("HH:mm dd/MM")</small>
+                    </div>
+
+                    @if (isMine)
+                    {
+                        <img src="@avatar" class="rounded-circle ms-2" style="width:40px;height:40px;object-fit:cover;">
+                    }
+                </div>
+            }
+
+        }
+    </div>
+
+    <div class="card-footer">
+        <div class="input-group">
+            <input type="text" id="messageInput" class="form-control" placeholder="Gõ tin nhắn..." />
+            <button id="sendBtn" class="btn btn-primary">Gửi</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.7/signalr.min.js" integrity="" crossorigin="anonymous"></script>
+    <script>
+        const projectId = @projectId;
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chathub")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.start()
+            .then(() => {
+                console.log("Connected to chathub");
+                // Join the project group
+                connection.invoke("JoinProjectGroup", projectId)
+                    .catch(err => console.error(err.toString()));
+            })
+            .catch(err => console.error(err.toString()));
+
+        // Khi server broadcast ReceiveMessage
+                connection.on("ReceiveMessage", function (msg) {
+
+            const isMine = msg.senderId === "@UserManager.GetUserId(User)";
+            const chatWindow = document.getElementById("chatWindow");
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "d-flex mb-2 " + (isMine ? "justify-content-end" : "justify-content-start");
+
+            const avatar = document.createElement("img");
+            avatar.src = msg.avatar;
+            avatar.style = "width:40px;height:40px;object-fit:cover;";
+            avatar.className = "rounded-circle " + (isMine ? "ms-2" : "me-2");
+
+            const box = document.createElement("div");
+            box.style = "max-width:60%;";
+
+            const bubble = document.createElement("div");
+            bubble.className = "p-2 rounded " + (isMine ? "bg-primary text-white" : "bg-light");
+            bubble.innerHTML = `<strong>${msg.senderName}</strong><br>${escapeHtml(msg.message).replace(/\n/g, "<br/>")}`;
+
+            const time = document.createElement("small");
+            time.className = "text-muted";
+            time.innerText = formatDate(msg.sentAt);
+
+            box.appendChild(bubble);
+            box.appendChild(time);
+
+            if (!isMine) wrapper.appendChild(avatar);
+            wrapper.appendChild(box);
+            if (isMine) wrapper.appendChild(avatar);
+
+            chatWindow.appendChild(wrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        });
+
+
+        document.getElementById("sendBtn").addEventListener("click", sendMessage);
+        document.getElementById("messageInput").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+        });
+
+        function sendMessage() {
+            const input = document.getElementById("messageInput");
+            const text = input.value.trim();
+            if (!text) return;
+            connection.invoke("SendMessageToProject", projectId, text)
+                .catch(err => console.error(err.toString()));
+            input.value = "";
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;");
+        }
+
+        function formatDate(iso) {
+            try {
+                const d = new Date(iso);
+                return d.toLocaleString();
+            } catch {
+                return iso;
+            }
+        }
+
+        // scroll to bottom on load
+        window.onload = function() {
+            const chatWindow = document.getElementById("chatWindow");
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    </script>
+}
+
